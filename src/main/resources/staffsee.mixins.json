@@ -3,7 +3,16 @@
   "package": "com.staffsee.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "CommandNodeAccessor"
+    "ChunkMapAccessor",
+    "CommandNodeAccessor",
+    "CommandSourceStackMixin",
+    "ListPlayersCommandMixin",
+    "MinecraftServerMixin",
+    "PlayerListMixin",
+    "ServerGamePacketListenerImplMixin",
+    "ServerPlayerMixin",
+    "StoredUserEntryAccessor",
+    "TrackedEntityInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

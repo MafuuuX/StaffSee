@@ -86,6 +86,10 @@ public final class LogWriter {
 		return staffLogRoot.resolve("_freezes.json").toFile();
 	}
 
+	public File getVanishFile() {
+		return staffLogRoot.resolve("_vanish.json").toFile();
+	}
+
 	public File getReportsFile() {
 		return staffLogRoot.resolve("_reports.json").toFile();
 	}

@@ -91,6 +91,10 @@ public final class StaffCommands {
 			.then(CommandManager.literal("resolve")
 				.then(CommandManager.argument("id", IntegerArgumentType.integer(1))
 					.executes(StaffCommands::resolveReport))));
+
+		BanCommands.register(dispatcher);
+		HistoryCommand.register(dispatcher);
+		StaffToolsCommands.register(dispatcher);
 	}
 
 	private static int warn(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
@@ -114,6 +118,8 @@ public final class StaffCommands {
 
 		target.sendMessage(Text.literal("You have been warned: " + reason), false);
 		source.sendFeedback(() -> Text.literal("Warned " + target.getGameProfile().getName() + " (" + countLabel(warnCounter, target) + "): " + reason), true);
+
+		mod.sendPunishmentWebhook("Warned", target.getGameProfile().getName(), staffName, reason);
 
 		if (config.warnBroadcast) {
 			source.getServer().getPlayerManager().broadcast(
@@ -197,6 +203,7 @@ public final class StaffCommands {
 		String muteLabel = parsed.label();
 		String muteReason = reason;
 		source.sendFeedback(() -> Text.literal("Muted " + target.getGameProfile().getName() + " (" + muteLabel + "): " + muteReason), true);
+		mod.sendPunishmentWebhook("Muted (" + muteLabel + ")", target.getGameProfile().getName(), staffName, reason);
 		return 1;
 	}
 
@@ -224,6 +231,7 @@ public final class StaffCommands {
 
 		target.sendMessage(Text.literal("You have been unmuted."), false);
 		source.sendFeedback(() -> Text.literal("Unmuted " + target.getGameProfile().getName() + "."), true);
+		mod.sendPunishmentWebhook("Unmuted", target.getGameProfile().getName(), staffName, null);
 		return 1;
 	}
 
@@ -255,6 +263,7 @@ public final class StaffCommands {
 		Text kickMessage = Text.literal("Kicked by " + staffName + ": " + reason);
 		target.networkHandler.disconnect(kickMessage);
 		source.sendFeedback(() -> Text.literal("Kicked " + target.getGameProfile().getName() + ": " + reason), true);
+		mod.sendPunishmentWebhook("Kicked", target.getGameProfile().getName(), staffName, reason);
 		return 1;
 	}
 
@@ -293,6 +302,7 @@ public final class StaffCommands {
 
 		target.sendMessage(Text.literal(mod.getConfig().freezeMessage), false);
 		source.sendFeedback(() -> Text.literal("Froze " + target.getGameProfile().getName() + ": " + reason), true);
+		mod.sendPunishmentWebhook("Frozen", target.getGameProfile().getName(), staffName, reason);
 		return 1;
 	}
 
@@ -364,6 +374,7 @@ public final class StaffCommands {
 		Text staffMessage = Text.literal("[Report #" + report.id + "] " + reporter.getGameProfile().getName()
 			+ " reported " + target.getGameProfile().getName() + ": " + reason);
 		mod.notifyStaff(staffMessage);
+		mod.sendReportWebhook(report.id, reporter.getGameProfile().getName(), target.getGameProfile().getName(), reason);
 		source.sendFeedback(() -> Text.literal("Report #" + report.id + " submitted. Staff has been notified."), false);
 		return 1;
 	}
@@ -421,11 +432,12 @@ public final class StaffCommands {
 
 		target.networkHandler.disconnect(Text.literal(reason));
 		source.sendFeedback(() -> Text.literal("Auto-kicked " + target.getGameProfile().getName() + " after reaching warning limit."), true);
+		mod.sendPunishmentWebhook("Auto-kicked", target.getGameProfile().getName(), staffName, reason);
 		return 1;
 	}
 
 	@SuppressWarnings("unchecked")
-	private static void removeCommand(CommandDispatcher<ServerCommandSource> dispatcher, String name) {
+	static void removeCommand(CommandDispatcher<ServerCommandSource> dispatcher, String name) {
 		CommandNodeAccessor<ServerCommandSource> root = (CommandNodeAccessor<ServerCommandSource>) dispatcher.getRoot();
 		root.staffsee$getChildren().remove(name);
 		root.staffsee$getLiterals().remove(name);
