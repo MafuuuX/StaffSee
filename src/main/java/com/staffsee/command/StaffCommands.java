@@ -8,6 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.staffsee.StaffSeeMod;
 import com.staffsee.config.StaffSeeConfig;
+import com.staffsee.mixin.CommandNodeAccessor;
 import com.staffsee.moderation.DurationParser;
 import com.staffsee.moderation.FreezeManager;
 import com.staffsee.moderation.MuteEntry;
@@ -30,7 +31,7 @@ import java.util.regex.Pattern;
 
 public final class StaffCommands {
 	private static final SimpleCommandExceptionType IO_ERROR = new SimpleCommandExceptionType(Component.literal("StaffSee failed to write logs."));
-	private static final Pattern DURATION_TOKEN = Pattern.compile("^\\d+[mhd]$|^perm$", Pattern.CASE_INSENSITIVE);
+	private static final Pattern DURATION_TOKEN = Pattern.compile("^\\d+[mhd]$|^perm(anent)?$", Pattern.CASE_INSENSITIVE);
 
 	private StaffCommands() {
 	}
@@ -58,9 +59,11 @@ public final class StaffCommands {
 			.then(Commands.argument("player", EntityArgument.player())
 				.executes(StaffCommands::unmute)));
 
+		removeCommand(dispatcher, "kick");
 		dispatcher.register(Commands.literal("kick")
 			.requires(StaffPermissions::canModerate)
 			.then(Commands.argument("player", EntityArgument.player())
+				.executes(StaffCommands::kickWithoutReason)
 				.then(Commands.argument("reason", StringArgumentType.greedyString())
 					.executes(StaffCommands::kick))));
 
@@ -159,17 +162,10 @@ public final class StaffCommands {
 
 		String durationToken = "perm";
 		String reason = rawInput;
-		int firstSpace = rawInput.indexOf(' ');
-		if (firstSpace > 0) {
-			String maybeDuration = rawInput.substring(0, firstSpace);
-			if (DURATION_TOKEN.matcher(maybeDuration).matches()) {
-				durationToken = maybeDuration;
-				reason = rawInput.substring(firstSpace + 1).trim();
-			}
-		}
-
-		if (reason.isEmpty()) {
-			throw new SimpleCommandExceptionType(Component.literal("Mute reason is required.")).create();
+		String[] parts = rawInput.split("\\s+", 2);
+		if (DURATION_TOKEN.matcher(parts[0]).matches()) {
+			durationToken = parts[0];
+			reason = parts.length > 1 ? parts[1] : "No reason given";
 		}
 
 		DurationParser.ParsedDuration parsed;
@@ -232,9 +228,17 @@ public final class StaffCommands {
 		return 1;
 	}
 
+	private static int kickWithoutReason(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+		return kickPlayer(context, "No reason given");
+	}
+
 	private static int kick(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
 		String reason = StringArgumentType.getString(context, "reason");
+		return kickPlayer(context, reason);
+	}
+
+	private static int kickPlayer(CommandContext<CommandSourceStack> context, String reason) throws CommandSyntaxException {
+		ServerPlayer target = EntityArgument.getPlayer(context, "player");
 		CommandSourceStack source = context.getSource();
 		String staffName = source.getDisplayName().getString();
 		StaffSeeMod mod = StaffSeeMod.getInstance();
@@ -419,6 +423,13 @@ public final class StaffCommands {
 		target.connection.disconnect(Component.literal(reason));
 		source.sendSuccess(() -> Component.literal("Auto-kicked " + target.getGameProfile().name() + " after reaching warning limit."), true);
 		return 1;
+	}
+
+	@SuppressWarnings("unchecked")
+	private static void removeCommand(CommandDispatcher<CommandSourceStack> dispatcher, String name) {
+		CommandNodeAccessor<CommandSourceStack> root = (CommandNodeAccessor<CommandSourceStack>) dispatcher.getRoot();
+		root.staffsee$getChildren().remove(name);
+		root.staffsee$getLiterals().remove(name);
 	}
 
 	private static String countLabel(WarnCounter warnCounter, ServerPlayer target) {
