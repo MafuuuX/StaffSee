@@ -53,6 +53,10 @@ public final class VanishManager {
 		}
 	}
 
+	public boolean anyVanished() {
+		return !vanished.isEmpty();
+	}
+
 	public boolean isVanished(UUID playerId) {
 		return vanished.contains(playerId);
 	}
@@ -71,6 +75,7 @@ public final class VanishManager {
 
 		MinecraftServer server = player.level().getServer();
 		ServerLevel level = player.level();
+		server.invalidateStatus();
 		Object tracked = ((ChunkMapAccessor) level.getChunkSource().chunkMap).staffsee$getEntityMap().get(player.getId());
 
 		for (ServerPlayer viewer : server.getPlayerList().getPlayers()) {

@@ -29,13 +29,13 @@ Only the server needs the mod. Players can join with a vanilla client. Works wel
 
 Staff commands need OP level 2, or the LuckPerms nodes below.
 
-`/ban` replaces the vanilla command but uses the same ban list, so `banned-players.json`, `/banlist` and the vanilla ban screen keep working.
+`/ban` and `/pardon` replace the vanilla commands (`/pardon` does the same as `/unban`) but use the same ban list, so `banned-players.json`, `/banlist` and the vanilla ban screen keep working.
 
 ## Vanish
 
 Vanished players are removed from the tab list and aren't visible in the world for normal players. Joining and leaving while vanished doesn't show a message to them. Staff with `staffsee.vanish.see` still see vanished players, and get the join/leave messages marked with `(vanished)`. Vanish stays on after relogging and after a restart.
 
-Vanished players still count in the player count of the server list and show up in `/list`.
+Vanished players are also left out of `/list`, the player count and player list in the server list, and name suggestions when typing commands.
 
 ## Logs
 

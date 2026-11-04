@@ -50,11 +50,15 @@ final class BanCommands {
 					.then(Commands.argument("reason", StringArgumentType.greedyString())
 						.executes(ctx -> ban(ctx, StringArgumentType.getString(ctx, "duration"), StringArgumentType.getString(ctx, "reason")))))));
 
-		dispatcher.register(Commands.literal("unban")
-			.requires(StaffPermissions::canModerate)
-			.then(Commands.argument("player", StringArgumentType.word())
-				.suggests((ctx, builder) -> SharedSuggestionProvider.suggest(ctx.getSource().getServer().getPlayerList().getBans().getUserList(), builder))
-				.executes(BanCommands::unban)));
+		// vanilla /pardon would skip the log, so it becomes the same as /unban
+		StaffCommands.removeCommand(dispatcher, "pardon");
+		for (String name : new String[]{"unban", "pardon"}) {
+			dispatcher.register(Commands.literal(name)
+				.requires(StaffPermissions::canModerate)
+				.then(Commands.argument("player", StringArgumentType.word())
+					.suggests((ctx, builder) -> SharedSuggestionProvider.suggest(ctx.getSource().getServer().getPlayerList().getBans().getUserList(), builder))
+					.executes(BanCommands::unban)));
+		}
 	}
 
 	private static int ban(CommandContext<CommandSourceStack> context, String durationToken, String reason) throws CommandSyntaxException {

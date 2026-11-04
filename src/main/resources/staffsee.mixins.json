@@ -5,6 +5,9 @@
   "mixins": [
     "ChunkMapAccessor",
     "CommandNodeAccessor",
+    "CommandSourceStackMixin",
+    "ListPlayersCommandMixin",
+    "MinecraftServerMixin",
     "PlayerListMixin",
     "ServerGamePacketListenerImplMixin",
     "ServerPlayerMixin",
