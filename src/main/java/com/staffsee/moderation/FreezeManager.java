@@ -60,9 +60,9 @@ public final class FreezeManager {
 	}
 
 	public void freeze(ServerPlayerEntity player, String frozenBy, String reason) {
-		String dimension = player.getEntityWorld().getRegistryKey().getValue().toString();
+		String dimension = player.getWorld().getRegistryKey().getValue().toString();
 		FreezeEntry entry = new FreezeEntry(
-			player.getGameProfile().name(),
+			player.getGameProfile().getName(),
 			frozenBy,
 			reason,
 			player.getX(),
@@ -93,7 +93,7 @@ public final class FreezeManager {
 			return;
 		}
 
-		String currentDimension = player.getEntityWorld().getRegistryKey().getValue().toString();
+		String currentDimension = player.getWorld().getRegistryKey().getValue().toString();
 		if (!currentDimension.equals(entry.dimension)) {
 			return;
 		}

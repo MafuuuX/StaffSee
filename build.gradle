@@ -29,7 +29,7 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-    include(modImplementation("me.lucko:fabric-permissions-api:0.6.1"))
+    include(modImplementation("me.lucko:fabric-permissions-api:0.4.0"))
 }
 
 processResources {
@@ -67,10 +67,3 @@ publishing {
     }
 }
 
-// fabric-permissions-api 0.6.1 needs 1.21.11, so 0.5.0 is shipped as well for 1.21.9 and 1.21.10.
-// Fabric Loader picks whichever nested copy fits the running game version.
-jar {
-    from("libs/fabric-permissions-api-0.5.0.jar") {
-        into "META-INF/jars"
-    }
-}

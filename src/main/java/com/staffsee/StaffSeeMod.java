@@ -120,7 +120,7 @@ public class StaffSeeMod implements ModInitializer {
 			}
 			if (config.logChat && chatLogWriter != null) {
 				try {
-					chatLogWriter.append(sender.getGameProfile().name(), message.getSignedContent());
+					chatLogWriter.append(sender.getGameProfile().getName(), message.getSignedContent());
 				} catch (IOException e) {
 					LOGGER.error("Failed to write chat log.", e);
 				}

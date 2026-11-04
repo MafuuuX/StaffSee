@@ -105,7 +105,7 @@ public final class StaffCommands {
 		StaffSeeConfig config = mod.getConfig();
 
 		try {
-			logWriter.append(target.getGameProfile().name(), LogType.WARN, "by " + staffName + "\nReason: " + reason);
+			logWriter.append(target.getGameProfile().getName(), LogType.WARN, "by " + staffName + "\nReason: " + reason);
 			warnCounter.increment(target.getUuid());
 			warnCounter.save();
 		} catch (IOException e) {
@@ -113,11 +113,11 @@ public final class StaffCommands {
 		}
 
 		target.sendMessage(Text.literal("You have been warned: " + reason), false);
-		source.sendFeedback(() -> Text.literal("Warned " + target.getGameProfile().name() + " (" + countLabel(warnCounter, target) + "): " + reason), true);
+		source.sendFeedback(() -> Text.literal("Warned " + target.getGameProfile().getName() + " (" + countLabel(warnCounter, target) + "): " + reason), true);
 
 		if (config.warnBroadcast) {
 			source.getServer().getPlayerManager().broadcast(
-				Text.literal(target.getGameProfile().name() + " was warned by " + staffName + ": " + reason),
+				Text.literal(target.getGameProfile().getName() + " was warned by " + staffName + ": " + reason),
 				false
 			);
 		}
@@ -135,18 +135,18 @@ public final class StaffCommands {
 
 		List<String> entries;
 		try {
-			entries = logWriter.readRecentWarns(target.getGameProfile().name(), 10);
+			entries = logWriter.readRecentWarns(target.getGameProfile().getName(), 10);
 		} catch (IOException e) {
 			throw IO_ERROR.create();
 		}
 
 		ServerCommandSource source = context.getSource();
 		if (entries.isEmpty()) {
-			source.sendFeedback(() -> Text.literal("No warnings for " + target.getGameProfile().name() + "."), false);
+			source.sendFeedback(() -> Text.literal("No warnings for " + target.getGameProfile().getName() + "."), false);
 			return 1;
 		}
 
-		source.sendFeedback(() -> Text.literal("Warnings for " + target.getGameProfile().name() + ":"), false);
+		source.sendFeedback(() -> Text.literal("Warnings for " + target.getGameProfile().getName() + ":"), false);
 		for (String entry : entries) {
 			source.sendFeedback(() -> Text.literal(entry.replace("\n", " | ")), false);
 		}
@@ -176,15 +176,15 @@ public final class StaffCommands {
 
 		long now = System.currentTimeMillis();
 		MuteEntry entry = parsed.isPermanent()
-			? MuteEntry.permanent(target.getGameProfile().name(), staffName, reason)
-			: MuteEntry.timed(target.getGameProfile().name(), staffName, reason, parsed.expiresAt(now), parsed.label());
+			? MuteEntry.permanent(target.getGameProfile().getName(), staffName, reason)
+			: MuteEntry.timed(target.getGameProfile().getName(), staffName, reason, parsed.expiresAt(now), parsed.label());
 
 		StaffSeeMod mod = StaffSeeMod.getInstance();
 		mod.getMuteManager().setMute(target.getUuid(), entry);
 
 		try {
 			mod.getLogWriter().append(
-				target.getGameProfile().name(),
+				target.getGameProfile().getName(),
 				LogType.MUTE,
 				"by " + staffName + " (" + parsed.label() + ")\nReason: " + reason
 			);
@@ -196,7 +196,7 @@ public final class StaffCommands {
 		target.sendMessage(Text.literal("You have been muted (" + parsed.label() + "): " + reason), false);
 		String muteLabel = parsed.label();
 		String muteReason = reason;
-		source.sendFeedback(() -> Text.literal("Muted " + target.getGameProfile().name() + " (" + muteLabel + "): " + muteReason), true);
+		source.sendFeedback(() -> Text.literal("Muted " + target.getGameProfile().getName() + " (" + muteLabel + "): " + muteReason), true);
 		return 1;
 	}
 
@@ -207,13 +207,13 @@ public final class StaffCommands {
 		StaffSeeMod mod = StaffSeeMod.getInstance();
 
 		if (!mod.getMuteManager().removeMute(target.getUuid())) {
-			source.sendError(Text.literal(target.getGameProfile().name() + " is not muted."));
+			source.sendError(Text.literal(target.getGameProfile().getName() + " is not muted."));
 			return 0;
 		}
 
 		try {
 			mod.getLogWriter().append(
-				target.getGameProfile().name(),
+				target.getGameProfile().getName(),
 				LogType.UNMUTE,
 				"by " + staffName + "\nAction: unmuted"
 			);
@@ -223,7 +223,7 @@ public final class StaffCommands {
 		}
 
 		target.sendMessage(Text.literal("You have been unmuted."), false);
-		source.sendFeedback(() -> Text.literal("Unmuted " + target.getGameProfile().name() + "."), true);
+		source.sendFeedback(() -> Text.literal("Unmuted " + target.getGameProfile().getName() + "."), true);
 		return 1;
 	}
 
@@ -244,7 +244,7 @@ public final class StaffCommands {
 
 		try {
 			mod.getLogWriter().append(
-				target.getGameProfile().name(),
+				target.getGameProfile().getName(),
 				LogType.KICK,
 				"by " + staffName + "\nReason: " + reason
 			);
@@ -254,7 +254,7 @@ public final class StaffCommands {
 
 		Text kickMessage = Text.literal("Kicked by " + staffName + ": " + reason);
 		target.networkHandler.disconnect(kickMessage);
-		source.sendFeedback(() -> Text.literal("Kicked " + target.getGameProfile().name() + ": " + reason), true);
+		source.sendFeedback(() -> Text.literal("Kicked " + target.getGameProfile().getName() + ": " + reason), true);
 		return 1;
 	}
 
@@ -275,14 +275,14 @@ public final class StaffCommands {
 		FreezeManager freezeManager = mod.getFreezeManager();
 
 		if (freezeManager.isFrozen(target.getUuid())) {
-			source.sendError(Text.literal(target.getGameProfile().name() + " is already frozen."));
+			source.sendError(Text.literal(target.getGameProfile().getName() + " is already frozen."));
 			return 0;
 		}
 
 		freezeManager.freeze(target, staffName, reason);
 		try {
 			mod.getLogWriter().append(
-				target.getGameProfile().name(),
+				target.getGameProfile().getName(),
 				LogType.FREEZE,
 				"by " + staffName + "\nReason: " + reason
 			);
@@ -292,7 +292,7 @@ public final class StaffCommands {
 		}
 
 		target.sendMessage(Text.literal(mod.getConfig().freezeMessage), false);
-		source.sendFeedback(() -> Text.literal("Froze " + target.getGameProfile().name() + ": " + reason), true);
+		source.sendFeedback(() -> Text.literal("Froze " + target.getGameProfile().getName() + ": " + reason), true);
 		return 1;
 	}
 
@@ -304,13 +304,13 @@ public final class StaffCommands {
 		FreezeManager freezeManager = mod.getFreezeManager();
 
 		if (!freezeManager.unfreeze(target.getUuid())) {
-			source.sendError(Text.literal(target.getGameProfile().name() + " is not frozen."));
+			source.sendError(Text.literal(target.getGameProfile().getName() + " is not frozen."));
 			return 0;
 		}
 
 		try {
 			mod.getLogWriter().append(
-				target.getGameProfile().name(),
+				target.getGameProfile().getName(),
 				LogType.UNFREEZE,
 				"by " + staffName + "\nAction: unfrozen"
 			);
@@ -320,7 +320,7 @@ public final class StaffCommands {
 		}
 
 		target.sendMessage(Text.literal("You have been unfrozen."), false);
-		source.sendFeedback(() -> Text.literal("Unfroze " + target.getGameProfile().name() + "."), true);
+		source.sendFeedback(() -> Text.literal("Unfroze " + target.getGameProfile().getName() + "."), true);
 		return 1;
 	}
 
@@ -351,9 +351,9 @@ public final class StaffCommands {
 		Report report;
 		try {
 			report = reportManager.createReport(
-				reporter.getGameProfile().name(),
+				reporter.getGameProfile().getName(),
 				reporter.getUuid(),
-				target.getGameProfile().name(),
+				target.getGameProfile().getName(),
 				target.getUuid(),
 				reason
 			);
@@ -361,8 +361,8 @@ public final class StaffCommands {
 			throw IO_ERROR.create();
 		}
 
-		Text staffMessage = Text.literal("[Report #" + report.id + "] " + reporter.getGameProfile().name()
-			+ " reported " + target.getGameProfile().name() + ": " + reason);
+		Text staffMessage = Text.literal("[Report #" + report.id + "] " + reporter.getGameProfile().getName()
+			+ " reported " + target.getGameProfile().getName() + ": " + reason);
 		mod.notifyStaff(staffMessage);
 		source.sendFeedback(() -> Text.literal("Report #" + report.id + " submitted. Staff has been notified."), false);
 		return 1;
@@ -411,7 +411,7 @@ public final class StaffCommands {
 		String reason = "Too many warnings";
 		try {
 			mod.getLogWriter().append(
-				target.getGameProfile().name(),
+				target.getGameProfile().getName(),
 				LogType.KICK,
 				"by " + staffName + " (auto)\nReason: " + reason
 			);
@@ -420,7 +420,7 @@ public final class StaffCommands {
 		}
 
 		target.networkHandler.disconnect(Text.literal(reason));
-		source.sendFeedback(() -> Text.literal("Auto-kicked " + target.getGameProfile().name() + " after reaching warning limit."), true);
+		source.sendFeedback(() -> Text.literal("Auto-kicked " + target.getGameProfile().getName() + " after reaching warning limit."), true);
 		return 1;
 	}
 
