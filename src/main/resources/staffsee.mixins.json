@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "package": "com.staffsee.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "CommandNodeAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
