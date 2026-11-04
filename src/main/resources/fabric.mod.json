@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "staffsee",
+	"version": "${version}",
+	"name": "StaffSee",
+	"description": "Lightweight player moderation for Fabric servers. Companion to ChestSee.",
+	"authors": [
+		"MafuuuX"
+	],
+	"contact": {
+		"homepage": "https://modrinth.com/mod/staffsee-moderation",
+		"sources": "https://github.com/MafuuuX/StaffSee",
+		"issues": "https://github.com/MafuuuX/StaffSee/issues"
+	},
+	"license": "MIT",
+	"icon": "assets/staffsee/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.staffsee.StaffSeeMod"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"fabric-api": "*",
+		"fabric-permissions-api-v0": "*",
+		"minecraft": ">=26.2"
+	},
+	"suggests": {
+		"chestsee": "*",
+		"luckperms": "*"
+	}
+}
