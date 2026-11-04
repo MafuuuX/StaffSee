@@ -2,9 +2,12 @@ package com.staffsee;
 
 import com.staffsee.command.StaffCommands;
 import com.staffsee.config.StaffSeeConfig;
+import com.staffsee.integration.DiscordWebhook;
 import com.staffsee.moderation.FreezeManager;
 import com.staffsee.moderation.MuteManager;
 import com.staffsee.moderation.ReportManager;
+import com.staffsee.moderation.StaffChat;
+import com.staffsee.moderation.VanishManager;
 import com.staffsee.permission.StaffPermissions;
 import com.staffsee.storage.ChatLogWriter;
 import com.staffsee.storage.LogWriter;
@@ -18,6 +21,7 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -43,6 +47,8 @@ public class StaffSeeMod implements ModInitializer {
 	private FreezeManager freezeManager;
 	private ReportManager reportManager;
 	private WarnCounter warnCounter;
+	private VanishManager vanishManager;
+	private final StaffChat staffChat = new StaffChat();
 	private MinecraftServer server;
 	private int tickCounter;
 
@@ -75,6 +81,7 @@ public class StaffSeeMod implements ModInitializer {
 			this.freezeManager = new FreezeManager(logWriter.getFreezesFile());
 			this.reportManager = new ReportManager(logWriter.getReportsFile(), logWriter.getReportsArchiveDir());
 			this.warnCounter = new WarnCounter(logWriter.getCountsFile());
+			this.vanishManager = new VanishManager(logWriter.getVanishFile());
 
 			try {
 				logWriter.ensureRoot();
@@ -82,6 +89,7 @@ public class StaffSeeMod implements ModInitializer {
 				freezeManager.load();
 				reportManager.load();
 				warnCounter.load();
+				vanishManager.load();
 			} catch (IOException e) {
 				LOGGER.error("Failed to initialize StaffSee storage.", e);
 			}
@@ -110,6 +118,10 @@ public class StaffSeeMod implements ModInitializer {
 			if (muteManager == null || config == null) {
 				return true;
 			}
+			if (staffChat.isToggled(sender.getUuid()) && StaffPermissions.canStaffChat(sender.getCommandSource())) {
+				sendStaffChat(sender.getGameProfile().name(), message.getSignedContent());
+				return false;
+			}
 			if (freezeManager != null && freezeManager.isFrozen(sender.getUuid())) {
 				sender.sendMessage(Text.literal(config.freezeMessage), false);
 				return false;
@@ -127,6 +139,8 @@ public class StaffSeeMod implements ModInitializer {
 			}
 			return true;
 		});
+
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> staffChat.remove(handler.player.getUuid()));
 
 		registerFreezeHandlers();
 	}
@@ -176,13 +190,45 @@ public class StaffSeeMod implements ModInitializer {
 	}
 
 	public void notifyStaff(Text message) {
+		notifyStaff(message, null);
+	}
+
+	public void notifyStaff(Text message, ServerPlayerEntity except) {
 		if (server == null) {
 			return;
 		}
 		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-			if (StaffPermissions.canModerate(player.getCommandSource())) {
+			if (player != except && StaffPermissions.canModerate(player.getCommandSource())) {
 				player.sendMessage(message, false);
 			}
+		}
+	}
+
+	public void sendStaffChat(String senderName, String message) {
+		staffChat.send(server, senderName, message);
+		if (config != null && config.logChat && chatLogWriter != null) {
+			try {
+				chatLogWriter.append(senderName, "[Staff] " + message);
+			} catch (IOException e) {
+				LOGGER.error("Failed to write chat log.", e);
+			}
+		}
+	}
+
+	public void sendReportWebhook(int id, String reporter, String target, String reason) {
+		if (config != null && config.discordReports) {
+			DiscordWebhook.send(config.discordWebhookUrl, "**Report #" + id + "** "
+				+ DiscordWebhook.escape(reporter) + " reported **" + DiscordWebhook.escape(target) + "**: " + DiscordWebhook.escape(reason));
+		}
+	}
+
+	public void sendPunishmentWebhook(String action, String target, String staffName, String reason) {
+		if (config != null && config.discordPunishments) {
+			String text = "**" + action + "** " + DiscordWebhook.escape(target) + " by " + DiscordWebhook.escape(staffName);
+			if (reason != null) {
+				text += ": " + DiscordWebhook.escape(reason);
+			}
+			DiscordWebhook.send(config.discordWebhookUrl, text);
 		}
 	}
 
@@ -226,6 +272,14 @@ public class StaffSeeMod implements ModInitializer {
 
 	public ReportManager getReportManager() {
 		return reportManager;
+	}
+
+	public VanishManager getVanishManager() {
+		return vanishManager;
+	}
+
+	public StaffChat getStaffChat() {
+		return staffChat;
 	}
 
 	public WarnCounter getWarnCounter() {
