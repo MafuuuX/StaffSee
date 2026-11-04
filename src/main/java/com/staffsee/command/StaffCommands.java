@@ -18,83 +18,83 @@ import com.staffsee.permission.StaffPermissions;
 import com.staffsee.storage.LogType;
 import com.staffsee.storage.LogWriter;
 import com.staffsee.storage.WarnCounter;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.command.argument.EntityArgumentType;
+import net.minecraft.server.command.CommandManager;
+import net.minecraft.server.command.ServerCommandSource;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.regex.Pattern;
 
 public final class StaffCommands {
-	private static final SimpleCommandExceptionType IO_ERROR = new SimpleCommandExceptionType(Component.literal("StaffSee failed to write logs."));
+	private static final SimpleCommandExceptionType IO_ERROR = new SimpleCommandExceptionType(Text.literal("StaffSee failed to write logs."));
 	private static final Pattern DURATION_TOKEN = Pattern.compile("^\\d+[mhd]$|^perm$", Pattern.CASE_INSENSITIVE);
 
 	private StaffCommands() {
 	}
 
-	public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-		dispatcher.register(Commands.literal("warn")
+	public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
+		dispatcher.register(CommandManager.literal("warn")
 			.requires(StaffPermissions::canModerate)
-			.then(Commands.argument("player", EntityArgument.player())
-				.then(Commands.argument("reason", StringArgumentType.greedyString())
+			.then(CommandManager.argument("player", EntityArgumentType.player())
+				.then(CommandManager.argument("reason", StringArgumentType.greedyString())
 					.executes(StaffCommands::warn))));
 
-		dispatcher.register(Commands.literal("warns")
+		dispatcher.register(CommandManager.literal("warns")
 			.requires(StaffPermissions::canModerate)
-			.then(Commands.argument("player", EntityArgument.player())
+			.then(CommandManager.argument("player", EntityArgumentType.player())
 				.executes(StaffCommands::warns)));
 
-		dispatcher.register(Commands.literal("mute")
+		dispatcher.register(CommandManager.literal("mute")
 			.requires(StaffPermissions::canModerate)
-			.then(Commands.argument("player", EntityArgument.player())
-				.then(Commands.argument("reason", StringArgumentType.greedyString())
+			.then(CommandManager.argument("player", EntityArgumentType.player())
+				.then(CommandManager.argument("reason", StringArgumentType.greedyString())
 					.executes(StaffCommands::mute))));
 
-		dispatcher.register(Commands.literal("unmute")
+		dispatcher.register(CommandManager.literal("unmute")
 			.requires(StaffPermissions::canModerate)
-			.then(Commands.argument("player", EntityArgument.player())
+			.then(CommandManager.argument("player", EntityArgumentType.player())
 				.executes(StaffCommands::unmute)));
 
-		dispatcher.register(Commands.literal("kick")
+		dispatcher.register(CommandManager.literal("kick")
 			.requires(StaffPermissions::canModerate)
-			.then(Commands.argument("player", EntityArgument.player())
-				.then(Commands.argument("reason", StringArgumentType.greedyString())
+			.then(CommandManager.argument("player", EntityArgumentType.player())
+				.then(CommandManager.argument("reason", StringArgumentType.greedyString())
 					.executes(StaffCommands::kick))));
 
-		dispatcher.register(Commands.literal("freeze")
+		dispatcher.register(CommandManager.literal("freeze")
 			.requires(StaffPermissions::canModerate)
-			.then(Commands.argument("player", EntityArgument.player())
+			.then(CommandManager.argument("player", EntityArgumentType.player())
 				.executes(StaffCommands::freezeWithoutReason)
-				.then(Commands.argument("reason", StringArgumentType.greedyString())
+				.then(CommandManager.argument("reason", StringArgumentType.greedyString())
 					.executes(StaffCommands::freeze))));
 
-		dispatcher.register(Commands.literal("unfreeze")
+		dispatcher.register(CommandManager.literal("unfreeze")
 			.requires(StaffPermissions::canModerate)
-			.then(Commands.argument("player", EntityArgument.player())
+			.then(CommandManager.argument("player", EntityArgumentType.player())
 				.executes(StaffCommands::unfreeze)));
 
-		dispatcher.register(Commands.literal("report")
+		dispatcher.register(CommandManager.literal("report")
 			.requires(StaffPermissions::canReport)
-			.then(Commands.argument("player", EntityArgument.player())
-				.then(Commands.argument("reason", StringArgumentType.greedyString())
+			.then(CommandManager.argument("player", EntityArgumentType.player())
+				.then(CommandManager.argument("reason", StringArgumentType.greedyString())
 					.executes(StaffCommands::report))));
 
-		dispatcher.register(Commands.literal("reports")
+		dispatcher.register(CommandManager.literal("reports")
 			.requires(StaffPermissions::canModerate)
 			.executes(StaffCommands::listReports)
-			.then(Commands.literal("resolve")
-				.then(Commands.argument("id", IntegerArgumentType.integer(1))
+			.then(CommandManager.literal("resolve")
+				.then(CommandManager.argument("id", IntegerArgumentType.integer(1))
 					.executes(StaffCommands::resolveReport))));
 	}
 
-	private static int warn(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
+	private static int warn(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
 		String reason = StringArgumentType.getString(context, "reason");
-		CommandSourceStack source = context.getSource();
-		String staffName = source.getDisplayName().getString();
+		ServerCommandSource source = context.getSource();
+		String staffName = source.getName();
 
 		StaffSeeMod mod = StaffSeeMod.getInstance();
 		LogWriter logWriter = mod.getLogWriter();
@@ -103,32 +103,31 @@ public final class StaffCommands {
 
 		try {
 			logWriter.append(target.getGameProfile().name(), LogType.WARN, "by " + staffName + "\nReason: " + reason);
-			warnCounter.increment(target.getUUID());
+			warnCounter.increment(target.getUuid());
 			warnCounter.save();
 		} catch (IOException e) {
 			throw IO_ERROR.create();
 		}
 
-		Component warnMessage = Component.literal("You have been warned: " + reason);
-		target.sendSystemMessage(warnMessage);
-		source.sendSuccess(() -> Component.literal("Warned " + target.getGameProfile().name() + " (" + countLabel(warnCounter, target) + "): " + reason), true);
+		target.sendMessage(Text.literal("You have been warned: " + reason), false);
+		source.sendFeedback(() -> Text.literal("Warned " + target.getGameProfile().name() + " (" + countLabel(warnCounter, target) + "): " + reason), true);
 
 		if (config.warnBroadcast) {
-			source.getServer().getPlayerList().broadcastSystemMessage(
-				Component.literal(target.getGameProfile().name() + " was warned by " + staffName + ": " + reason),
+			source.getServer().getPlayerManager().broadcast(
+				Text.literal(target.getGameProfile().name() + " was warned by " + staffName + ": " + reason),
 				false
 			);
 		}
 
-		if (config.autoKickAfterWarns > 0 && warnCounter.getCount(target.getUUID()) >= config.autoKickAfterWarns) {
+		if (config.autoKickAfterWarns > 0 && warnCounter.getCount(target.getUuid()) >= config.autoKickAfterWarns) {
 			return autoKick(target, source, staffName, mod);
 		}
 
 		return 1;
 	}
 
-	private static int warns(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
+	private static int warns(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
 		LogWriter logWriter = StaffSeeMod.getInstance().getLogWriter();
 
 		List<String> entries;
@@ -138,24 +137,24 @@ public final class StaffCommands {
 			throw IO_ERROR.create();
 		}
 
-		CommandSourceStack source = context.getSource();
+		ServerCommandSource source = context.getSource();
 		if (entries.isEmpty()) {
-			source.sendSuccess(() -> Component.literal("No warnings for " + target.getGameProfile().name() + "."), false);
+			source.sendFeedback(() -> Text.literal("No warnings for " + target.getGameProfile().name() + "."), false);
 			return 1;
 		}
 
-		source.sendSuccess(() -> Component.literal("Warnings for " + target.getGameProfile().name() + ":"), false);
+		source.sendFeedback(() -> Text.literal("Warnings for " + target.getGameProfile().name() + ":"), false);
 		for (String entry : entries) {
-			source.sendSuccess(() -> Component.literal(entry.replace("\n", " | ")), false);
+			source.sendFeedback(() -> Text.literal(entry.replace("\n", " | ")), false);
 		}
 		return entries.size();
 	}
 
-	private static int mute(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
+	private static int mute(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
 		String rawInput = StringArgumentType.getString(context, "reason").trim();
-		CommandSourceStack source = context.getSource();
-		String staffName = source.getDisplayName().getString();
+		ServerCommandSource source = context.getSource();
+		String staffName = source.getName();
 
 		String durationToken = "perm";
 		String reason = rawInput;
@@ -169,14 +168,14 @@ public final class StaffCommands {
 		}
 
 		if (reason.isEmpty()) {
-			throw new SimpleCommandExceptionType(Component.literal("Mute reason is required.")).create();
+			throw new SimpleCommandExceptionType(Text.literal("Mute reason is required.")).create();
 		}
 
 		DurationParser.ParsedDuration parsed;
 		try {
 			parsed = DurationParser.parse(durationToken);
 		} catch (IllegalArgumentException e) {
-			throw new SimpleCommandExceptionType(Component.literal(e.getMessage())).create();
+			throw new SimpleCommandExceptionType(Text.literal(e.getMessage())).create();
 		}
 
 		long now = System.currentTimeMillis();
@@ -185,7 +184,7 @@ public final class StaffCommands {
 			: MuteEntry.timed(target.getGameProfile().name(), staffName, reason, parsed.expiresAt(now), parsed.label());
 
 		StaffSeeMod mod = StaffSeeMod.getInstance();
-		mod.getMuteManager().setMute(target.getUUID(), entry);
+		mod.getMuteManager().setMute(target.getUuid(), entry);
 
 		try {
 			mod.getLogWriter().append(
@@ -198,21 +197,21 @@ public final class StaffCommands {
 			throw IO_ERROR.create();
 		}
 
-		target.sendSystemMessage(Component.literal("You have been muted (" + parsed.label() + "): " + reason));
+		target.sendMessage(Text.literal("You have been muted (" + parsed.label() + "): " + reason), false);
 		String muteLabel = parsed.label();
 		String muteReason = reason;
-		source.sendSuccess(() -> Component.literal("Muted " + target.getGameProfile().name() + " (" + muteLabel + "): " + muteReason), true);
+		source.sendFeedback(() -> Text.literal("Muted " + target.getGameProfile().name() + " (" + muteLabel + "): " + muteReason), true);
 		return 1;
 	}
 
-	private static int unmute(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
-		CommandSourceStack source = context.getSource();
-		String staffName = source.getDisplayName().getString();
+	private static int unmute(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
+		ServerCommandSource source = context.getSource();
+		String staffName = source.getName();
 		StaffSeeMod mod = StaffSeeMod.getInstance();
 
-		if (!mod.getMuteManager().removeMute(target.getUUID())) {
-			source.sendFailure(Component.literal(target.getGameProfile().name() + " is not muted."));
+		if (!mod.getMuteManager().removeMute(target.getUuid())) {
+			source.sendError(Text.literal(target.getGameProfile().name() + " is not muted."));
 			return 0;
 		}
 
@@ -227,16 +226,16 @@ public final class StaffCommands {
 			throw IO_ERROR.create();
 		}
 
-		target.sendSystemMessage(Component.literal("You have been unmuted."));
-		source.sendSuccess(() -> Component.literal("Unmuted " + target.getGameProfile().name() + "."), true);
+		target.sendMessage(Text.literal("You have been unmuted."), false);
+		source.sendFeedback(() -> Text.literal("Unmuted " + target.getGameProfile().name() + "."), true);
 		return 1;
 	}
 
-	private static int kick(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
+	private static int kick(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
 		String reason = StringArgumentType.getString(context, "reason");
-		CommandSourceStack source = context.getSource();
-		String staffName = source.getDisplayName().getString();
+		ServerCommandSource source = context.getSource();
+		String staffName = source.getName();
 		StaffSeeMod mod = StaffSeeMod.getInstance();
 
 		try {
@@ -249,30 +248,30 @@ public final class StaffCommands {
 			throw IO_ERROR.create();
 		}
 
-		Component kickMessage = Component.literal("Kicked by " + staffName + ": " + reason);
-		target.connection.disconnect(kickMessage);
-		source.sendSuccess(() -> Component.literal("Kicked " + target.getGameProfile().name() + ": " + reason), true);
+		Text kickMessage = Text.literal("Kicked by " + staffName + ": " + reason);
+		target.networkHandler.disconnect(kickMessage);
+		source.sendFeedback(() -> Text.literal("Kicked " + target.getGameProfile().name() + ": " + reason), true);
 		return 1;
 	}
 
-	private static int freezeWithoutReason(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+	private static int freezeWithoutReason(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
 		return freezePlayer(context, "No reason given");
 	}
 
-	private static int freeze(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+	private static int freeze(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
 		String reason = StringArgumentType.getString(context, "reason");
 		return freezePlayer(context, reason);
 	}
 
-	private static int freezePlayer(CommandContext<CommandSourceStack> context, String reason) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
-		CommandSourceStack source = context.getSource();
-		String staffName = source.getDisplayName().getString();
+	private static int freezePlayer(CommandContext<ServerCommandSource> context, String reason) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
+		ServerCommandSource source = context.getSource();
+		String staffName = source.getName();
 		StaffSeeMod mod = StaffSeeMod.getInstance();
 		FreezeManager freezeManager = mod.getFreezeManager();
 
-		if (freezeManager.isFrozen(target.getUUID())) {
-			source.sendFailure(Component.literal(target.getGameProfile().name() + " is already frozen."));
+		if (freezeManager.isFrozen(target.getUuid())) {
+			source.sendError(Text.literal(target.getGameProfile().name() + " is already frozen."));
 			return 0;
 		}
 
@@ -288,20 +287,20 @@ public final class StaffCommands {
 			throw IO_ERROR.create();
 		}
 
-		target.sendSystemMessage(Component.literal(mod.getConfig().freezeMessage));
-		source.sendSuccess(() -> Component.literal("Froze " + target.getGameProfile().name() + ": " + reason), true);
+		target.sendMessage(Text.literal(mod.getConfig().freezeMessage), false);
+		source.sendFeedback(() -> Text.literal("Froze " + target.getGameProfile().name() + ": " + reason), true);
 		return 1;
 	}
 
-	private static int unfreeze(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
-		CommandSourceStack source = context.getSource();
-		String staffName = source.getDisplayName().getString();
+	private static int unfreeze(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
+		ServerCommandSource source = context.getSource();
+		String staffName = source.getName();
 		StaffSeeMod mod = StaffSeeMod.getInstance();
 		FreezeManager freezeManager = mod.getFreezeManager();
 
-		if (!freezeManager.unfreeze(target.getUUID())) {
-			source.sendFailure(Component.literal(target.getGameProfile().name() + " is not frozen."));
+		if (!freezeManager.unfreeze(target.getUuid())) {
+			source.sendError(Text.literal(target.getGameProfile().name() + " is not frozen."));
 			return 0;
 		}
 
@@ -316,22 +315,22 @@ public final class StaffCommands {
 			throw IO_ERROR.create();
 		}
 
-		target.sendSystemMessage(Component.literal("You have been unfrozen."));
-		source.sendSuccess(() -> Component.literal("Unfroze " + target.getGameProfile().name() + "."), true);
+		target.sendMessage(Text.literal("You have been unfrozen."), false);
+		source.sendFeedback(() -> Text.literal("Unfroze " + target.getGameProfile().name() + "."), true);
 		return 1;
 	}
 
-	private static int report(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
-		ServerPlayer target = EntityArgument.getPlayer(context, "player");
+	private static int report(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
+		ServerPlayerEntity target = EntityArgumentType.getPlayer(context, "player");
 		String reason = StringArgumentType.getString(context, "reason");
-		CommandSourceStack source = context.getSource();
+		ServerCommandSource source = context.getSource();
 
-		if (!(source.getEntity() instanceof ServerPlayer reporter)) {
-			throw new SimpleCommandExceptionType(Component.literal("Only players can submit reports.")).create();
+		if (!(source.getEntity() instanceof ServerPlayerEntity reporter)) {
+			throw new SimpleCommandExceptionType(Text.literal("Only players can submit reports.")).create();
 		}
 
-		if (reporter.getUUID().equals(target.getUUID())) {
-			source.sendFailure(Component.literal("You cannot report yourself."));
+		if (reporter.getUuid().equals(target.getUuid())) {
+			source.sendError(Text.literal("You cannot report yourself."));
 			return 0;
 		}
 
@@ -339,9 +338,9 @@ public final class StaffCommands {
 		StaffSeeConfig config = mod.getConfig();
 		ReportManager reportManager = mod.getReportManager();
 
-		if (reportManager.isOnCooldown(reporter.getUUID(), config.reportCooldownSeconds)) {
-			int wait = reportManager.secondsUntilNextReport(reporter.getUUID(), config.reportCooldownSeconds);
-			source.sendFailure(Component.literal("Please wait " + wait + "s before submitting another report."));
+		if (reportManager.isOnCooldown(reporter.getUuid(), config.reportCooldownSeconds)) {
+			int wait = reportManager.secondsUntilNextReport(reporter.getUuid(), config.reportCooldownSeconds);
+			source.sendError(Text.literal("Please wait " + wait + "s before submitting another report."));
 			return 0;
 		}
 
@@ -349,43 +348,43 @@ public final class StaffCommands {
 		try {
 			report = reportManager.createReport(
 				reporter.getGameProfile().name(),
-				reporter.getUUID(),
+				reporter.getUuid(),
 				target.getGameProfile().name(),
-				target.getUUID(),
+				target.getUuid(),
 				reason
 			);
 		} catch (IOException e) {
 			throw IO_ERROR.create();
 		}
 
-		Component staffMessage = Component.literal("[Report #" + report.id + "] " + reporter.getGameProfile().name()
+		Text staffMessage = Text.literal("[Report #" + report.id + "] " + reporter.getGameProfile().name()
 			+ " reported " + target.getGameProfile().name() + ": " + reason);
 		mod.notifyStaff(staffMessage);
-		source.sendSuccess(() -> Component.literal("Report #" + report.id + " submitted. Staff has been notified."), false);
+		source.sendFeedback(() -> Text.literal("Report #" + report.id + " submitted. Staff has been notified."), false);
 		return 1;
 	}
 
-	private static int listReports(CommandContext<CommandSourceStack> context) {
+	private static int listReports(CommandContext<ServerCommandSource> context) {
 		StaffSeeMod mod = StaffSeeMod.getInstance();
 		List<Report> reports = mod.getReportManager().listOpenReports(10);
-		CommandSourceStack source = context.getSource();
+		ServerCommandSource source = context.getSource();
 
 		if (reports.isEmpty()) {
-			source.sendSuccess(() -> Component.literal("No open reports."), false);
+			source.sendFeedback(() -> Text.literal("No open reports."), false);
 			return 1;
 		}
 
-		source.sendSuccess(() -> Component.literal("Open reports:"), false);
+		source.sendFeedback(() -> Text.literal("Open reports:"), false);
 		for (Report report : reports) {
-			source.sendSuccess(() -> Component.literal("#" + report.id + " " + report.reporterName + " -> " + report.targetName + ": " + report.reason), false);
+			source.sendFeedback(() -> Text.literal("#" + report.id + " " + report.reporterName + " -> " + report.targetName + ": " + report.reason), false);
 		}
 		return reports.size();
 	}
 
-	private static int resolveReport(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+	private static int resolveReport(CommandContext<ServerCommandSource> context) throws CommandSyntaxException {
 		int id = IntegerArgumentType.getInteger(context, "id");
-		CommandSourceStack source = context.getSource();
-		String staffName = source.getDisplayName().getString();
+		ServerCommandSource source = context.getSource();
+		String staffName = source.getName();
 		StaffSeeMod mod = StaffSeeMod.getInstance();
 
 		boolean resolved;
@@ -396,15 +395,15 @@ public final class StaffCommands {
 		}
 
 		if (!resolved) {
-			source.sendFailure(Component.literal("Report #" + id + " was not found."));
+			source.sendError(Text.literal("Report #" + id + " was not found."));
 			return 0;
 		}
 
-		source.sendSuccess(() -> Component.literal("Resolved report #" + id + "."), true);
+		source.sendFeedback(() -> Text.literal("Resolved report #" + id + "."), true);
 		return 1;
 	}
 
-	private static int autoKick(ServerPlayer target, CommandSourceStack source, String staffName, StaffSeeMod mod) throws CommandSyntaxException {
+	private static int autoKick(ServerPlayerEntity target, ServerCommandSource source, String staffName, StaffSeeMod mod) throws CommandSyntaxException {
 		String reason = "Too many warnings";
 		try {
 			mod.getLogWriter().append(
@@ -416,12 +415,12 @@ public final class StaffCommands {
 			throw IO_ERROR.create();
 		}
 
-		target.connection.disconnect(Component.literal(reason));
-		source.sendSuccess(() -> Component.literal("Auto-kicked " + target.getGameProfile().name() + " after reaching warning limit."), true);
+		target.networkHandler.disconnect(Text.literal(reason));
+		source.sendFeedback(() -> Text.literal("Auto-kicked " + target.getGameProfile().name() + " after reaching warning limit."), true);
 		return 1;
 	}
 
-	private static String countLabel(WarnCounter warnCounter, ServerPlayer target) {
-		return warnCounter.getCount(target.getUUID()) + " warning(s)";
+	private static String countLabel(WarnCounter warnCounter, ServerPlayerEntity target) {
+		return warnCounter.getCount(target.getUuid()) + " warning(s)";
 	}
 }

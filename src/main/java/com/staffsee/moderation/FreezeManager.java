@@ -3,7 +3,7 @@ package com.staffsee.moderation;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.ServerPlayerEntity;
 
 import java.io.File;
 import java.io.FileReader;
@@ -59,8 +59,8 @@ public final class FreezeManager {
 		}
 	}
 
-	public void freeze(ServerPlayer player, String frozenBy, String reason) {
-		String dimension = player.level().dimension().identifier().toString();
+	public void freeze(ServerPlayerEntity player, String frozenBy, String reason) {
+		String dimension = player.getEntityWorld().getRegistryKey().getValue().toString();
 		FreezeEntry entry = new FreezeEntry(
 			player.getGameProfile().name(),
 			frozenBy,
@@ -68,11 +68,11 @@ public final class FreezeManager {
 			player.getX(),
 			player.getY(),
 			player.getZ(),
-			player.getYRot(),
-			player.getXRot(),
+			player.getYaw(),
+			player.getPitch(),
 			dimension
 		);
-		activeFreezes.put(player.getUUID(), entry);
+		activeFreezes.put(player.getUuid(), entry);
 	}
 
 	public boolean unfreeze(UUID playerId) {
@@ -87,21 +87,19 @@ public final class FreezeManager {
 		return Optional.ofNullable(activeFreezes.get(playerId));
 	}
 
-	public void enforceFrozen(ServerPlayer player) {
-		FreezeEntry entry = activeFreezes.get(player.getUUID());
+	public void enforceFrozen(ServerPlayerEntity player) {
+		FreezeEntry entry = activeFreezes.get(player.getUuid());
 		if (entry == null) {
 			return;
 		}
 
-		String currentDimension = player.level().dimension().identifier().toString();
+		String currentDimension = player.getEntityWorld().getRegistryKey().getValue().toString();
 		if (!currentDimension.equals(entry.dimension)) {
 			return;
 		}
 
-		player.teleportTo(entry.x, entry.y, entry.z);
-		player.setDeltaMovement(net.minecraft.world.phys.Vec3.ZERO);
-		player.resetFallDistance();
-		player.setYRot(entry.yaw);
-		player.setXRot(entry.pitch);
+		player.refreshPositionAndAngles(entry.x, entry.y, entry.z, entry.yaw, entry.pitch);
+		player.setVelocity(net.minecraft.util.math.Vec3d.ZERO);
+		player.fallDistance = 0.0F;
 	}
 }

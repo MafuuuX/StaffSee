@@ -18,11 +18,11 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.level.storage.LevelResource;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.util.ActionResult;
+import net.minecraft.util.WorldSavePath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +68,7 @@ public class StaffSeeMod implements ModInitializer {
 				this.config = new StaffSeeConfig();
 			}
 
-			Path staffLogRoot = server.getWorldPath(LevelResource.ROOT).resolve("StaffLog");
+			Path staffLogRoot = server.getSavePath(WorldSavePath.ROOT).resolve("StaffLog");
 			this.logWriter = new LogWriter(staffLogRoot);
 			this.chatLogWriter = new ChatLogWriter(logWriter.getChatLogDir());
 			this.muteManager = new MuteManager(logWriter.getMutesFile());
@@ -92,8 +92,8 @@ public class StaffSeeMod implements ModInitializer {
 		ServerTickEvents.END_SERVER_TICK.register(server -> {
 			tickCounter++;
 			if (freezeManager != null) {
-				for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-					if (freezeManager.isFrozen(player.getUUID())) {
+				for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+					if (freezeManager.isFrozen(player.getUuid())) {
 						freezeManager.enforceFrozen(player);
 					}
 				}
@@ -107,23 +107,20 @@ public class StaffSeeMod implements ModInitializer {
 		});
 
 		ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
-			if (!(sender instanceof ServerPlayer player)) {
-				return true;
-			}
 			if (muteManager == null || config == null) {
 				return true;
 			}
-			if (freezeManager != null && freezeManager.isFrozen(player.getUUID())) {
-				player.sendSystemMessage(Component.literal(config.freezeMessage));
+			if (freezeManager != null && freezeManager.isFrozen(sender.getUuid())) {
+				sender.sendMessage(Text.literal(config.freezeMessage), false);
 				return false;
 			}
-			if (muteManager.isMuted(player.getUUID())) {
-				player.sendSystemMessage(Component.literal(config.muteMessage));
+			if (muteManager.isMuted(sender.getUuid())) {
+				sender.sendMessage(Text.literal(config.muteMessage), false);
 				return false;
 			}
 			if (config.logChat && chatLogWriter != null) {
 				try {
-					chatLogWriter.append(player.getGameProfile().name(), message.decoratedContent().getString());
+					chatLogWriter.append(sender.getGameProfile().name(), message.getSignedContent());
 				} catch (IOException e) {
 					LOGGER.error("Failed to write chat log.", e);
 				}
@@ -136,31 +133,31 @@ public class StaffSeeMod implements ModInitializer {
 
 	private void registerFreezeHandlers() {
 		AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> {
-			if (player instanceof ServerPlayer serverPlayer && isFrozen(serverPlayer)) {
+			if (player instanceof ServerPlayerEntity serverPlayer && isFrozen(serverPlayer)) {
 				sendFreezeMessage(serverPlayer);
-				return InteractionResult.FAIL;
+				return ActionResult.FAIL;
 			}
-			return InteractionResult.PASS;
+			return ActionResult.PASS;
 		});
 
 		UseBlockCallback.EVENT.register((player, world, hand, hitResult) -> {
-			if (player instanceof ServerPlayer serverPlayer && isFrozen(serverPlayer)) {
+			if (player instanceof ServerPlayerEntity serverPlayer && isFrozen(serverPlayer)) {
 				sendFreezeMessage(serverPlayer);
-				return InteractionResult.FAIL;
+				return ActionResult.FAIL;
 			}
-			return InteractionResult.PASS;
+			return ActionResult.PASS;
 		});
 
 		UseItemCallback.EVENT.register((player, world, hand) -> {
-			if (player instanceof ServerPlayer serverPlayer && isFrozen(serverPlayer)) {
+			if (player instanceof ServerPlayerEntity serverPlayer && isFrozen(serverPlayer)) {
 				sendFreezeMessage(serverPlayer);
-				return InteractionResult.FAIL;
+				return ActionResult.FAIL;
 			}
-			return InteractionResult.PASS;
+			return ActionResult.PASS;
 		});
 
 		PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
-			if (player instanceof ServerPlayer serverPlayer && isFrozen(serverPlayer)) {
+			if (player instanceof ServerPlayerEntity serverPlayer && isFrozen(serverPlayer)) {
 				sendFreezeMessage(serverPlayer);
 				return false;
 			}
@@ -168,23 +165,23 @@ public class StaffSeeMod implements ModInitializer {
 		});
 	}
 
-	private boolean isFrozen(ServerPlayer player) {
-		return freezeManager != null && freezeManager.isFrozen(player.getUUID());
+	private boolean isFrozen(ServerPlayerEntity player) {
+		return freezeManager != null && freezeManager.isFrozen(player.getUuid());
 	}
 
-	private void sendFreezeMessage(ServerPlayer player) {
+	private void sendFreezeMessage(ServerPlayerEntity player) {
 		if (config != null) {
-			player.sendSystemMessage(Component.literal(config.freezeMessage));
+			player.sendMessage(Text.literal(config.freezeMessage), false);
 		}
 	}
 
-	public void notifyStaff(Component message) {
+	public void notifyStaff(Text message) {
 		if (server == null) {
 			return;
 		}
-		for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-			if (StaffPermissions.canModerate(player.createCommandSourceStack())) {
-				player.sendSystemMessage(message);
+		for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
+			if (StaffPermissions.canModerate(player.getCommandSource())) {
+				player.sendMessage(message, false);
 			}
 		}
 	}
