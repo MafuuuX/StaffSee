@@ -17,6 +17,9 @@ public final class StaffSeeConfig {
 	public String freezeMessage = "You are frozen by staff.";
 	public boolean logChat = true;
 	public int reportCooldownSeconds = 60;
+	public String discordWebhookUrl = "";
+	public boolean discordReports = true;
+	public boolean discordPunishments = false;
 
 	public static StaffSeeConfig load(File configFile) throws IOException {
 		if (!configFile.exists()) {
@@ -25,10 +28,16 @@ public final class StaffSeeConfig {
 			return config;
 		}
 
+		StaffSeeConfig loaded;
 		try (FileReader reader = new FileReader(configFile)) {
-			StaffSeeConfig loaded = GSON.fromJson(reader, StaffSeeConfig.class);
-			return loaded != null ? loaded : new StaffSeeConfig();
+			loaded = GSON.fromJson(reader, StaffSeeConfig.class);
 		}
+		if (loaded == null) {
+			loaded = new StaffSeeConfig();
+		}
+		// rewrite so options added in an update show up in the file
+		loaded.save(configFile);
+		return loaded;
 	}
 
 	public void save(File configFile) throws IOException {
