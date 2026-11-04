@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -204,7 +205,7 @@ final class HistoryCommand {
 
 	private static UserBanListEntry findBan(MinecraftServer server, String name) {
 		for (UserBanListEntry entry : server.getPlayerList().getBans().getEntries()) {
-			if (entry.getUser() != null && entry.getUser().name().equalsIgnoreCase(name) && !entry.hasExpired()) {
+			if (entry.getUser() != null && entry.getUser().name().equalsIgnoreCase(name) && (entry.getExpires() == null || entry.getExpires().after(new Date()))) {
 				return entry;
 			}
 		}
