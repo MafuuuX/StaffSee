@@ -6,7 +6,9 @@ public enum LogType {
 	KICK("kicks.txt"),
 	UNMUTE("mutes.txt"),
 	FREEZE("freezes.txt"),
-	UNFREEZE("freezes.txt");
+	UNFREEZE("freezes.txt"),
+	BAN("bans.txt"),
+	UNBAN("bans.txt");
 
 	private final String fileName;
 
